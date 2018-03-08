@@ -1,15 +1,17 @@
-# Dependencies
+# Flask dependencies
 from flask import Flask, jsonify, render_template
+
+# Flask set up
+app = Flask(__name__)
+
+# Database setup and connection
 import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, desc  #what else here???
 
-# Custom Function
-from return_sample import return_sample_names
-
-#  Flask
-app = Flask(__name__)
+# Import custom functions
+from bbd import return_sample_names
 
 engine = create_engine("sqlite:///DataSets/belly_button_biodiversity.sqlite")
 
@@ -20,15 +22,14 @@ Otu = Base.classes.otu
 Samples = Base.classes.samples
 Samples_metadata = Base.classes.samples_metadata
 
-# Create session 
+# Create Session 
 session = Session(engine)
 
-# Index Route
+# Create Routes
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# Names Route
 @app.route("/names")
 def names():
     sample_names = Samples.__table__.columns
@@ -36,14 +37,12 @@ def names():
     sample_names_ls.remove("otu_id")
     return jsonify(sample_names_ls)
 
-# OTU Route
 @app.route("/otu")
 def otu():
     otu_descriptions = session.query(Otu.lowest_taxonomic_unit_found).all()
     otu_descriptions_list = [x for (x), in otu_descriptions]
     return jsonify(otu_descriptions_list)
 
-# Descriptions Route
 @app.route("/otu_descriptions")
 def otu_disc():
     otu_descriptions = session.query(Otu.otu_id, Otu.lowest_taxonomic_unit_found).all()
@@ -52,7 +51,6 @@ def otu_disc():
         otu_dict[row[0]] = row[1]
     return jsonify(otu_dict)
 
-# Metadata Route
 @app.route("/metadata/<sample>")
 def sample_query(sample):
     sample_name = sample.replace("BB_", "")
@@ -68,7 +66,6 @@ def sample_query(sample):
     }
     return jsonify(record_dict)
 
-# Wash Frequency Route
 @app.route('/wfreq/<sample>')
 def wash_freq(sample):
     sample_name = sample.replace("BB_", "")
@@ -76,7 +73,6 @@ def wash_freq(sample):
     wash_freq = result[0][0]
     return jsonify(wash_freq)
 
-# Sample Route
 @app.route('/samples/<sample>')
 def otu_data(sample):
     sample_query = "Samples." + sample
@@ -86,6 +82,5 @@ def otu_data(sample):
     dict_list = [{"otu_ids": otu_ids}, {"sample_values": sample_values}]
     return jsonify(dict_list)
 
-# Needed for Flask
 if __name__ == '__main__':
     app.run(debug=True)

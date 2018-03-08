@@ -1,6 +1,9 @@
+// Create dropdown from Flask
 d3.json("/names", function(error, response) {
 
     if (error) return console.warn(error);
+
+    // console.log(response);
 
     var $dropDown = document.getElementById("selDataset")
 
@@ -12,26 +15,41 @@ d3.json("/names", function(error, response) {
     }
 });
 
+// Set the intial values and graphs on the page
 var defaultSample = "BB_940"
 
 function init(sample){
+    // Sample metadata panel
     d3.json("/metadata/" + sample, function(error, response){
         if (error) return console.warn(error);
+
+        // Get list of keys from response
         var responseKeys = Object.keys(response);
+
+        // Identify the correct div
         var $sampleInfoPanel = document.querySelector("#sample-metadata");
+       
+        // Reset HTML to nothing
         $sampleInfoPanel.innerHTML = null;
 
+        // Loop through response keys and create a P element for each
         for (var i=0; i<responseKeys.length; i++){
             var $dataPoint = document.createElement('p');
             $dataPoint.innerHTML = responseKeys[i] + ": " + response[responseKeys[i]];
             $sampleInfoPanel.appendChild($dataPoint)
         };
+
     });
 
+    // Pie Chart
+    // Get the response for default sample
     d3.json("/samples/" + sample, function(error, sampleResponse){
 
         if (error) return console.warn(error);
         console.log(sampleResponse)
+        
+        // Parse the repsonse data and take sice of first ten
+        // data returns sorted from schalchemy/flask
         resLabels = sampleResponse[0]["otu_ids"].slice(0,10)
         resValues = sampleResponse[1]["sample_values"].slice(0,10)
 
@@ -43,7 +61,10 @@ function init(sample){
                 resValues[i] = resValues.slice(0,i)
             }
         }
+        // console.log(resLabels)
+        // console.log(resValues)
 
+        // Get matching decriptions for the top ten bacteria and create a list
         d3.json("/otu_descriptions", function(error, response){
 
             if (error) return console.warn(error);
@@ -53,13 +74,16 @@ function init(sample){
             for (var i=0; i< resLabels.length; i++){
                 bacteriaNamesPie.push(response[resLabels[i]])
             }
-
+            // console.log(bacteriaNames)
+            
+            // List of names for the Bubble Chart
             var bacteriaNamesBub = []
             for (var i =0; i<sampleResponse[0]["otu_ids"].length; i++){
                 bacteriaNamesBub.push(response[sampleResponse[0]["otu_ids"][i]])
             }
             console.log(bacteriaNamesBub)
 
+            // Setup the data for pie chart
             var data = [{
             values: resValues,
             labels: resLabels,
@@ -68,7 +92,10 @@ function init(sample){
             type: 'pie'
             }];
 
+        // Setup the layout for plot
+
           var layout = {
+                    // width: 675,
                     margin: 
                     {
                         top: 10,
@@ -79,11 +106,15 @@ function init(sample){
                     height: 500,
                     title: "Top Sample Counts for " + sample
                   };
-
+        // Plot the default value
           Plotly.newPlot('piePlot', data, layout);
 
         console.log(sampleResponse);
+        // Bubble Plot 
 
+        
+        
+        
         var trace1 = {
             x: sampleResponse[0]["otu_ids"],
             y: sampleResponse[1]["sample_values"],
@@ -104,30 +135,41 @@ function init(sample){
             hovermode: 'closest',
             showlegend: false,
             height: 600,
+            // width: 1200
             margin: 
                 {
                     top: 10,
                     bottom: 10,
                     right: 10,
                     left: 10
-                }   
-          };         
+                }
+    
+          };
+          
           Plotly.newPlot('bubblePlot', bubData, bubLayout);
         });
+    
+        
+
     });
 
     d3.json("/wfreq/" + sample, function(error, washResponse){
 
         if (error) return console.warn(error);
 
+        // 
+        
+        // Determines the level
         var level =washResponse*20;
 
+        // Calculate the meter point
         var degrees = 180 - level,
             radius = .5;
         var radians = degrees * Math.PI / 180;
         var x = radius * Math.cos(radians);
         var y = radius * Math.sin(radians);
 
+        // Path
         var mainPath = 'M -.0 -0.025 L .0 0.025 L ',
             pathX = String(x),
             space = ' ',
@@ -140,6 +182,7 @@ function init(sample){
             marker: {size: 15, color:'850000'},
             showlegend: false,
             name: 'Number of Washes',
+            // text: washResponse,
             hoverinfo: 'name'
         },
         { values: [50/5, 50/5, 50/5, 50/5, 50/5, 50],
@@ -170,6 +213,7 @@ function init(sample){
             }],
         title: "<b>Belly Button Washing Frequency</b> <br> Washes per Week",
         height: 500,
+        // width: 600,
         margin: {
             top: 50,
             bottom: 10,
@@ -186,6 +230,8 @@ function init(sample){
             })
 };
 
+
+// Update the pie chart function
 function updatePie(newValues, newLabels, newNames, sample_name){
     Plotly.restyle("piePlot", "values", [newValues])
     Plotly.restyle("piePlot", "labels", [newLabels])
@@ -207,7 +253,8 @@ function updateBub(values, labels, names, sample_name){
 function updateMeter(newWashFreq){
     var level =newWashFreq*20;
     console.log("New Wash Freq: " + newWashFreq)
-
+    
+    // Calculate the meter point
     var degrees = 180 - level,
         radius = .5;
     var radians = degrees * Math.PI / 180;
@@ -223,8 +270,10 @@ function updateMeter(newWashFreq){
 
     Plotly.relayout("meter", "shapes[0].path", path);
     
+
     console.log("Success Meter")
 };
+// Handle the change in dropdown
 function optionChanged(chosenSample){
    
     d3.json("/metadata/" + chosenSample, function(error, response){
@@ -251,6 +300,7 @@ function optionChanged(chosenSample){
 
     })
 
+    // Handle the new get request for choice
     d3.json("/samples/" + chosenSample, function(error, newResponse){
         
         if (error) return console.warn(error);
@@ -283,17 +333,22 @@ function optionChanged(chosenSample){
             for (var i=0; i< newResLabels.length; i++){
                 newBacteriaNames.push(otuResponse[newResLabels[i]])
             }
-
+            //  all bacteria names for bubble hover
             var allBacteriaNames = []
             for (var i=0; i<newResponse[0]["otu_ids"].length; i++){
                 allBacteriaNames.push(otuResponse[newResponse[0]["otu_ids"][i]])
             }
-
+            // console.log(allBacteriaNames)
+          
+            
+            // New variables for the updateBub function
             var newValuesBub = newResponse[1]['sample_values']
             var newLabelsBub = newResponse[0]['otu_ids']
             console.log(newValuesBub)
             console.log(newLabelsBub)
 
+        // Update the meter
+            
             updatePie(newResValues, newResLabels, newBacteriaNames, chosenSample);
 
             updateBub(newValuesBub, newLabelsBub, allBacteriaNames, chosenSample);
@@ -306,7 +361,16 @@ function optionChanged(chosenSample){
             updateMeter(washResponse);
             console.log(washResponse);
         });
+                
+                  
+                
+                  
+    
+                
+        
     })
+
+
 }
 
 init(defaultSample);
